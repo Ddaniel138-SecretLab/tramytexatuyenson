@@ -44,7 +44,14 @@ export default function PortalShell({ role, children }: Props) {
   const [email, setEmail] = useState("");
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
-  const nav = role === "ADMIN" ? adminNav : staffNav;
+  const nav = useMemo(
+    () => role === "ADMIN"
+      ? adminNav
+      : staffNav.map((item) => item.href === "/staff/announcements" && profile?.role === "MANAGER"
+        ? { ...item, label: "Thông báo toàn trạm" }
+        : item),
+    [profile?.role, role],
+  );
 
   useEffect(() => {
     let alive = true;

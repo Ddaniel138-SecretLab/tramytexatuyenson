@@ -14,7 +14,7 @@ type UserRow = {
   createdAt: string;
   profile: {
     full_name: string;
-    role: "ADMIN" | "STAFF";
+    role: "ADMIN" | "MANAGER" | "STAFF";
     is_active: boolean;
     must_change_password: boolean;
     facility_id: string | null;
@@ -66,7 +66,7 @@ export default function AdminUsersPage() {
                           {user.profile?.full_name ?? "Chưa có hồ sơ"}
                         </Typography>
                         <Stack direction="row" spacing={0.75} flexWrap="wrap" sx={{ mt: 1.25, rowGap: 0.75 }}>
-                          <Chip size="small" label={user.profile?.role ?? "Chưa gán role"} color={user.profile?.role === "ADMIN" ? "primary" : "default"} />
+                          <Chip size="small" label={user.profile?.role ?? "Chưa gán role"} color={user.profile?.role === "ADMIN" || user.profile?.role === "MANAGER" ? "primary" : "default"} />
                           <Chip size="small" label={user.emailConfirmed ? "Đã xác minh" : "Chưa xác minh"} color={user.emailConfirmed ? "success" : "warning"} />
                           <Chip size="small" label={userStatus.label} color={userStatus.color} />
                         </Stack>
@@ -96,7 +96,7 @@ export default function AdminUsersPage() {
                         <TableCell sx={{ wordBreak: "break-word" }}>{user.email ?? "—"}</TableCell>
                         <TableCell>{user.profile?.full_name ?? "Chưa có hồ sơ"}</TableCell>
                         <TableCell>
-                          <Chip size="small" color={user.profile?.role === "ADMIN" ? "primary" : "default"} label={user.profile?.role ?? "Chưa gán role"} />
+                          <Chip size="small" color={user.profile?.role === "ADMIN" || user.profile?.role === "MANAGER" ? "primary" : "default"} label={user.profile?.role ?? "Chưa gán role"} />
                         </TableCell>
                         <TableCell>
                           <Chip size="small" color={user.emailConfirmed ? "success" : "warning"} label={user.emailConfirmed ? "Đã xác minh" : "Chưa xác minh"} />

@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     const phone = normalizeText(body.phone, 30) || null;
     const position = normalizeText(body.position, 120) || null;
     const role = body.role === "MANAGER" ? "MANAGER" : "STAFF";
-    const facilityId = role === "MANAGER" || body.facilityId === null || body.facilityId === "" ? null : body.facilityId;
+    const facilityId = body.facilityId === null || body.facilityId === undefined || body.facilityId === "" ? null : body.facilityId;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ success: false, message: "Email không hợp lệ." }, { status: 400 });
     if (!fullName) return NextResponse.json({ success: false, message: "Họ tên không được để trống." }, { status: 400 });
     if (facilityId && !isUuid(facilityId)) return NextResponse.json({ success: false, message: "Cơ sở không hợp lệ." }, { status: 400 });
@@ -78,9 +78,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: "Không thể tạo hồ sơ cán bộ. Tài khoản Auth đã được hoàn tác." }, { status: 500 });
     }
     await writeAuditLog(admin, auth, { entityType: "STAFF", entityId: newUser.id, targetUserId: newUser.id, action: "CREATE", newValues: { ...profilePayload, email } });
-    return NextResponse.json({ success: true, message: role === "MANAGER" ? "Đã tạo tài khoản quản lý toàn trạm." : "Đã tạo tài khoản cán bộ.", data: { ...profile, email, temporaryPassword } }, { status: 201 });
+    return NextResponse.json({ success: true, message: role === "MANAGER" ? "Đã tạo tài khoản quản lý." : "Đã tạo tài khoản nhân viên.", data: { ...profile, email, temporaryPassword } }, { status: 201 });
   } catch (error) {
     console.error("Admin staff POST:", error);
-    return NextResponse.json({ success: false, message: "Không thể tạo tài khoản cán bộ." }, { status: 500 });
+    return NextResponse.json({ success: false, message: "Không thể tạo tài khoản nhân viên." }, { status: 500 });
   }
 }

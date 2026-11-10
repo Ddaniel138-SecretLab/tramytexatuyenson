@@ -16,17 +16,16 @@ function slugify(value: string) {
 export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff();
   if (!auth.authorized) return NextResponse.json({ success: false, message: auth.message }, { status: auth.status });
-  if (!auth.profile.facility_id) return NextResponse.json({ success: false, message: 'Tài khoản chưa được phân công cơ sở.' }, { status: 403 });
+  const isManager = auth.profile.role === 'MANAGER';
+  if (!isManager && !auth.profile.facility_id) return NextResponse.json({ success: false, message: 'Tài khoản chưa được phân công cơ sở.' }, { status: 403 });
 
   const { id } = await context.params;
   if (!isUuid(id)) return NextResponse.json({ success: false, message: 'Mã thông báo không hợp lệ.' }, { status: 400 });
 
   const admin = createAdminClient();
-  const { data, error } = await admin.from('announcements').select('*')
-    .eq('id', id)
-    .eq('facility_id', auth.profile.facility_id)
-    .eq('author_id', auth.user.id)
-    .maybeSingle();
+  let detailQuery = admin.from('announcements').select('*').eq('id', id).eq('author_id', auth.user.id);
+  detailQuery = isManager ? detailQuery.is('facility_id', null) : detailQuery.eq('facility_id', auth.profile.facility_id!);
+  const { data, error } = await detailQuery.maybeSingle();
 
   if (error || !data) return NextResponse.json({ success: false, message: 'Không tìm thấy thông báo hoặc bạn không có quyền chỉnh sửa.' }, { status: 404 });
   return NextResponse.json({ success: true, data });
@@ -35,18 +34,17 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff();
   if (!auth.authorized) return NextResponse.json({ success: false, message: auth.message }, { status: auth.status });
-  if (!auth.profile.facility_id) return NextResponse.json({ success: false, message: 'Tài khoản chưa được phân công cơ sở.' }, { status: 403 });
+  const isManager = auth.profile.role === 'MANAGER';
+  if (!isManager && !auth.profile.facility_id) return NextResponse.json({ success: false, message: 'Tài khoản chưa được phân công cơ sở.' }, { status: 403 });
 
   const { id } = await context.params;
   if (!isUuid(id)) return NextResponse.json({ success: false, message: 'Mã thông báo không hợp lệ.' }, { status: 400 });
 
   try {
     const admin = createAdminClient();
-    const { data: old } = await admin.from('announcements').select('*')
-      .eq('id', id)
-      .eq('facility_id', auth.profile.facility_id)
-      .eq('author_id', auth.user.id)
-      .maybeSingle();
+    let oldQuery = admin.from('announcements').select('*').eq('id', id).eq('author_id', auth.user.id);
+    oldQuery = isManager ? oldQuery.is('facility_id', null) : oldQuery.eq('facility_id', auth.profile.facility_id!);
+    const { data: old } = await oldQuery.maybeSingle();
 
     if (!old) return NextResponse.json({ success: false, message: 'Bạn chỉ được chỉnh sửa thông báo do chính mình tạo.' }, { status: 403 });
 
@@ -94,17 +92,16 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 export async function DELETE(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff();
   if (!auth.authorized) return NextResponse.json({ success: false, message: auth.message }, { status: auth.status });
-  if (!auth.profile.facility_id) return NextResponse.json({ success: false, message: 'Tài khoản chưa được phân công cơ sở.' }, { status: 403 });
+  const isManager = auth.profile.role === 'MANAGER';
+  if (!isManager && !auth.profile.facility_id) return NextResponse.json({ success: false, message: 'Tài khoản chưa được phân công cơ sở.' }, { status: 403 });
 
   const { id } = await context.params;
   if (!isUuid(id)) return NextResponse.json({ success: false, message: 'Mã thông báo không hợp lệ.' }, { status: 400 });
 
   const admin = createAdminClient();
-  const { data: old } = await admin.from('announcements').select('*')
-    .eq('id', id)
-    .eq('facility_id', auth.profile.facility_id)
-    .eq('author_id', auth.user.id)
-    .maybeSingle();
+  let oldQuery = admin.from('announcements').select('*').eq('id', id).eq('author_id', auth.user.id);
+  oldQuery = isManager ? oldQuery.is('facility_id', null) : oldQuery.eq('facility_id', auth.profile.facility_id!);
+  const { data: old } = await oldQuery.maybeSingle();
 
   if (!old) return NextResponse.json({ success: false, message: 'Bạn chỉ được xóa thông báo do chính mình tạo.' }, { status: 403 });
 
