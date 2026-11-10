@@ -1,0 +1,51 @@
+@import "@fontsource/be-vietnam-pro/400.css";
+@import "@fontsource/be-vietnam-pro/500.css";
+@import "@fontsource/be-vietnam-pro/600.css";
+@import "@fontsource/be-vietnam-pro/700.css";
+@import "@fontsource/be-vietnam-pro/800.css";
+
+:root {
+  color-scheme: light;
+  --page-bg: #f4f8f6;
+  --surface: #ffffff;
+  --text: #183b35;
+  --muted: #657a75;
+  --border: #e4ece8;
+  --brand: #087c70;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; background: var(--page-bg); }
+body {
+  margin: 0;
+  background: var(--page-bg);
+  color: var(--text);
+  font-family: "Be Vietnam Pro", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+a { color: inherit; }
+button, input, textarea, select { font: inherit; }
+img { max-width: 100%; }
+::selection { background: #bde6d7; color: #075b53; }
+
+.MuiContainer-root { width: 100%; }
+.MuiCard-root { overflow: hidden; }
+.MuiTableContainer-root { border-radius: 16px; }
+.MuiTableRow-root:last-child .MuiTableCell-root { border-bottom: 0; }
+.MuiDialogContent-root { overflow-x: hidden; }
+.MuiDrawer-paper { background-image: none !important; }
+.MuiMenu-paper { border: 1px solid var(--border); box-shadow: 0 16px 48px rgba(15,55,47,.12) !important; border-radius: 14px !important; }
+.MuiTooltip-tooltip { font-family: "Be Vietnam Pro", sans-serif; font-size: 11px; }
+
+.page-heading { margin-bottom: 22px; }
+.page-heading .eyebrow { color: var(--brand); font-weight: 800; letter-spacing: .08em; }
+.page-surface { border: 1px solid var(--border); border-radius: 18px; background: var(--surface); box-shadow: 0 8px 30px rgba(20,65,54,.045); }
+
+@media (max-width: 599px) {
+  .MuiDialog-paper { margin: 10px !important; width: calc(100% - 20px); }
+  .MuiDialogTitle-root { padding: 20px 18px 10px !important; }
+  .MuiDialogContent-root { padding: 10px 18px 18px !important; }
+  .MuiDialogActions-root { padding: 12px 18px 18px !important; flex-wrap: wrap; }
+  .MuiTableCell-root { padding: 11px 12px; }
+}
