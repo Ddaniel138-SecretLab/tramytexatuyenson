@@ -104,9 +104,9 @@ export function AnnouncementDetailPage({
 
   const imageUrl = data
     ? getAnnouncementImagePath(
-        data.type,
-        data.cover_image_url,
-      )
+      data.type,
+      data.cover_image_url,
+    )
     : "";
 
   return (
@@ -288,15 +288,36 @@ export function AnnouncementDetailPage({
               {data.title}
             </Typography>
 
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ mt: 1 }}
-            >
-              {data.facility?.name
-                ? data.facility.name
-                : "Trạm Y tế xã Tuyên Sơn"}
-            </Typography>
+            {data.facility?.name ? (
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 1 }}
+              >
+                {data.facility.name}
+              </Typography>
+            ) : (
+              <Chip
+                label="Áp dụng tại cả 2 điểm trạm"
+                size="small"
+                color="success"
+                variant="outlined"
+                sx={{
+                  mt: 1,
+                  height: 28,
+                  width: "fit-content",
+                  bgcolor: "#F0F8F2",
+                  borderColor: "#B9DFC6",
+                  color: "#167044",
+                  fontWeight: 700,
+                  fontSize: 12,
+                  borderRadius: 1.5,
+                  "& .MuiChip-label": {
+                    px: 1.25,
+                  },
+                }}
+              />
+            )}
           </Box>
 
           {/* Event date */}

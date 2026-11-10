@@ -18,9 +18,10 @@ export async function GET(request: NextRequest) {
   const auth = await requireStaff();
   if (!auth.authorized) return NextResponse.json({ success: false, message: auth.message }, { status: auth.status });
 
+  const isManager = auth.profile.role === 'MANAGER';
   const params = request.nextUrl.searchParams;
   const { page, perPage, from, to } = readPagination(params, 10, 50);
-  if (!auth.profile.facility_id) {
+  if (!isManager && !auth.profile.facility_id) {
     return NextResponse.json({ success: true, data: [], pagination: createPagination(page, perPage, 0), message: 'Tài khoản chưa được phân công cơ sở.' });
   }
 
@@ -31,11 +32,11 @@ export async function GET(request: NextRequest) {
     const admin = createAdminClient();
 
     let query = admin.from('announcements').select(
-      'id,title,slug,summary,content,type,facility_id,author_id,status,cover_image_url,attachments,published_at,event_date,expires_at,created_at,updated_at,author:profiles!announcements_author_id_fkey(id,full_name)',
+      'id,title,slug,summary,content,type,facility_id,author_id,status,cover_image_url,attachments,published_at,event_date,expires_at,created_at,updated_at,facility:facilities(id,name),author:profiles!announcements_author_id_fkey(id,full_name)',
       { count: 'exact' },
-    )
-      .eq('facility_id', auth.profile.facility_id)
-      .or(`status.eq.PUBLISHED,author_id.eq.${auth.user.id}`);
+    );
+    if (isManager) query = query.or(`status.eq.PUBLISHED,author_id.eq.${auth.user.id}`);
+    else query = query.eq('facility_id', auth.profile.facility_id!).or(`status.eq.PUBLISHED,author_id.eq.${auth.user.id}`);
 
     if (search) query = query.ilike('title', `%${search}%`);
     if (status && STATUSES.includes(status as AnnouncementStatus)) query = query.eq('status', status);
@@ -55,7 +56,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const auth = await requireStaff();
   if (!auth.authorized) return NextResponse.json({ success: false, message: auth.message }, { status: auth.status });
-  if (!auth.profile.facility_id) return NextResponse.json({ success: false, message: 'Tài khoản chưa được phân công cơ sở.' }, { status: 403 });
+  const isManager = auth.profile.role === 'MANAGER';
+  if (!isManager && !auth.profile.facility_id) return NextResponse.json({ success: false, message: 'Tài khoản chưa được phân công cơ sở.' }, { status: 403 });
 
   try {
     const body = await request.json();
@@ -77,7 +79,7 @@ export async function POST(request: NextRequest) {
       summary,
       content,
       type,
-      facility_id: auth.profile.facility_id,
+      facility_id: isManager ? null : auth.profile.facility_id,
       author_id: auth.user.id,
       status,
       cover_image_url: normalizeText(body.coverImageUrl, 1000) || null,

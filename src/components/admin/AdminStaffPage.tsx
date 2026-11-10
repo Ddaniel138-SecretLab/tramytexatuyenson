@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Avatar,
@@ -63,6 +63,7 @@ type StaffInput = {
   position: string;
   facilityId: string;
   isActive: boolean;
+  role: "STAFF" | "MANAGER";
 };
 
 const initial: StaffInput = {
@@ -72,6 +73,7 @@ const initial: StaffInput = {
   position: "",
   facilityId: "",
   isActive: true,
+  role: "STAFF",
 };
 
 type StaffRow = Profile & { email?: string | null };
@@ -98,6 +100,10 @@ export default function AdminStaffPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<StaffRow | null>(null);
   const [form, setForm] = useState<StaffInput>(initial);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string>("");
+  const [avatarCleared, setAvatarCleared] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [message, setMessage] = useState("");
@@ -127,17 +133,31 @@ export default function AdminStaffPage() {
     setForm(
       item
         ? {
-            fullName: item.full_name,
-            email: item.email ?? "",
-            phone: item.phone ?? "",
-            position: item.position ?? "",
-            facilityId: item.facility_id ?? "",
-            isActive: item.is_active,
-          }
+          fullName: item.full_name,
+          email: item.email ?? "",
+          phone: item.phone ?? "",
+          position: item.position ?? "",
+          facilityId: item.facility_id ?? "",
+          isActive: item.is_active,
+          role: item.role === "MANAGER" ? "MANAGER" : "STAFF",
+        }
         : initial,
     );
+    setAvatarFile(null);
+    setAvatarPreview(item?.avatar_url ?? "");
+    setAvatarCleared(false);
+    if (avatarInputRef.current) avatarInputRef.current.value = "";
     setFormError("");
     setDialogOpen(true);
+  }
+
+  async function uploadAvatar(profileId: string) {
+    if (!avatarFile) return;
+    const formData = new FormData();
+    formData.append("file", avatarFile);
+    const response = await fetch(`/api/admin/staff/${profileId}/avatar`, { method: "POST", body: formData });
+    const body = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(body?.message || "Không thể cập nhật ảnh đại diện.");
   }
 
   async function save() {
@@ -150,17 +170,21 @@ export default function AdminStaffPage() {
           method: "PATCH",
           body: JSON.stringify({
             fullName: form.fullName,
+            email: form.email.trim().toLowerCase(),
             phone: form.phone,
             position: form.position,
             facilityId: form.facilityId || null,
             isActive: form.isActive,
+            role: form.role,
+            ...(avatarCleared ? { avatarUrl: null } : {}),
           }),
         });
-        setMessage("Đã cập nhật hồ sơ cán bộ.");
+        await uploadAvatar(editing.id);
+        setMessage("Đã cập nhật hồ sơ nhân sự.");
       } else {
         const result = await apiRequest<{
           success: boolean;
-          data: { temporaryPassword: string };
+          data: { id: string; temporaryPassword: string };
         }>("/api/admin/staff", {
           method: "POST",
           body: JSON.stringify({
@@ -169,18 +193,25 @@ export default function AdminStaffPage() {
             phone: form.phone,
             position: form.position,
             facilityId: form.facilityId || null,
+            role: form.role,
           }),
         });
         setTemporaryPassword(result.data.temporaryPassword);
         setPasswordOpen(true);
-        setMessage("Đã tạo tài khoản cán bộ.");
+        let avatarWarning = "";
+        try {
+          await uploadAvatar(result.data.id);
+        } catch (avatarError) {
+          avatarWarning = ` Ảnh đại diện chưa tải lên được; bạn có thể cập nhật lại trong phần chỉnh sửa hồ sơ. ${avatarError instanceof Error ? avatarError.message : ""}`;
+        }
+        setMessage((form.role === "MANAGER" ? "Đã tạo tài khoản quản lý." : "Đã tạo tài khoản nhân viên.") + avatarWarning);
       }
 
       setDialogOpen(false);
       reload();
     } catch (cause) {
       setFormError(
-        cause instanceof Error ? cause.message : "Không thể lưu cán bộ.",
+        cause instanceof Error ? cause.message : "Không thể lưu nhân sự.",
       );
     } finally {
       setSaving(false);
@@ -204,7 +235,7 @@ export default function AdminStaffPage() {
         await apiRequest(`/api/admin/staff/${confirmAction.item.id}`, {
           method: "DELETE",
         });
-        setMessage("Đã xóa tài khoản cán bộ.");
+        setMessage("Đã xóa tài khoản nhân sự.");
       } else {
         const result = await apiRequest<{ temporaryPassword: string }>(
           `/api/admin/staff/${confirmAction.item.id}/reset-password`,
@@ -235,8 +266,8 @@ export default function AdminStaffPage() {
     <Stack spacing={{ xs: 2, md: 2.5 }}>
       <AdminPageHeader
         eyebrow="QUẢN TRỊ HỆ THỐNG"
-        title="Quản lý cán bộ"
-        description="Tạo tài khoản, cập nhật hồ sơ, phân công cơ sở và cấp mật khẩu tạm cho cán bộ y tế."
+        title="Quản lý nhân sự"
+        description="Tạo tài khoản, cập nhật hồ sơ, phân công cơ sở và cấp mật khẩu tạm cho nhân viên, quản lý."
         action={
           <Button
             fullWidth={isMobile}
@@ -244,7 +275,7 @@ export default function AdminStaffPage() {
             startIcon={<AddOutlinedIcon />}
             onClick={() => openDialog()}
           >
-            Thêm cán bộ
+            Thêm nhân sự
           </Button>
         }
       />
@@ -322,8 +353,8 @@ export default function AdminStaffPage() {
           <LoadingState />
         ) : data.length === 0 ? (
           <EmptyState
-            title="Chưa có cán bộ"
-            description="Tạo tài khoản cán bộ đầu tiên để bắt đầu quản lý."
+            title="Chưa có nhân sự"
+            description="Tạo tài khoản nhân viên hoặc quản lý đầu tiên để bắt đầu quản lý."
           />
         ) : (
           <>
@@ -381,11 +412,12 @@ export default function AdminStaffPage() {
                         />
                       </Stack>
                       <Stack spacing={0.6} sx={{ mt: 1.5 }}>
+                        <Box><Chip size="small" color={item.role === "MANAGER" ? "primary" : "default"} label={item.role === "MANAGER" ? "Quản lý" : "Nhân viên"} /></Box>
                         <Typography variant="body2">
-                          {item.position || "Cán bộ y tế"}
+                          {item.position || (item.role === "MANAGER" ? "Quản lý" : "Nhân viên y tế")}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {item.facility?.name || "Chưa phân cơ sở"}
+                          {item.facility?.name || (item.role === "MANAGER" ? "Phạm vi toàn trạm · Chưa gán cơ sở" : "Chưa phân cơ sở")}
                         </Typography>
                         {item.phone && (
                           <Typography variant="caption" color="text.secondary">
@@ -423,8 +455,8 @@ export default function AdminStaffPage() {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Cán bộ</TableCell>
-                    <TableCell>Chức vụ</TableCell>
+                    <TableCell>Nhân sự</TableCell>
+                    <TableCell>Vai trò / Chức vụ</TableCell>
                     <TableCell>Cơ sở</TableCell>
                     <TableCell>Liên hệ</TableCell>
                     <TableCell>Trạng thái</TableCell>
@@ -457,11 +489,9 @@ export default function AdminStaffPage() {
                           </Box>
                         </Stack>
                       </TableCell>
-                      <TableCell>{item.position || "—"}</TableCell>
+                      <TableCell><Stack spacing={0.5} alignItems="flex-start"><Chip size="small" color={item.role === "MANAGER" ? "primary" : "default"} label={item.role === "MANAGER" ? "Quản lý" : "Nhân viên"} />{item.position || "—"}</Stack></TableCell>
                       <TableCell>
-                        {item.facility?.name || (
-                          <Chip size="small" label="Chưa phân cơ sở" />
-                        )}
+                        {item.facility?.name || <Chip size="small" label={item.role === "MANAGER" ? "Toàn trạm · Chưa gán cơ sở" : "Chưa phân cơ sở"} color={item.role === "MANAGER" ? "primary" : "default"} />}
                       </TableCell>
                       <TableCell>{item.phone || "—"}</TableCell>
                       <TableCell>
@@ -520,7 +550,7 @@ export default function AdminStaffPage() {
       >
         <DialogTitle sx={{ px: { xs: 2, sm: 3 }, pt: 2.5, pb: 2 }}>
           <AdminDialogHeading
-            title={editing ? "Chỉnh sửa thông tin cán bộ" : "Tạo tài khoản cán bộ"}
+            title={editing ? "Chỉnh sửa hồ sơ" : "Tạo tài khoản nhân viên / quản lý"}
             description={
               editing
                 ? "Cập nhật hồ sơ, phân công cơ sở và trạng thái tài khoản."
@@ -533,9 +563,19 @@ export default function AdminStaffPage() {
           sx={{ px: { xs: 1.75, sm: 3 }, py: 2.5, bgcolor: "#F7FAF8" }}
         >
           <Stack spacing={2.25}>
+            <AdminFormSection title="Ảnh đại diện" description="Tải ảnh chân dung để hiển thị trong danh sách và trang giới thiệu nhân sự. JPEG, PNG hoặc WebP, tối đa 5 MB.">
+              <Stack direction="row" alignItems="center" spacing={2}>
+                <Avatar src={avatarPreview || undefined} sx={{ width: 76, height: 76, bgcolor: "primary.light", color: "primary.dark", fontSize: 26, fontWeight: 800 }}>{form.fullName.slice(0, 1)}</Avatar>
+                <Stack spacing={0.75}>
+                  <Button variant="outlined" onClick={() => avatarInputRef.current?.click()}>Chọn ảnh đại diện</Button>
+                  <Button size="small" color="inherit" disabled={!avatarPreview && !avatarFile} onClick={() => { setAvatarFile(null); setAvatarPreview(""); setAvatarCleared(true); if (avatarInputRef.current) avatarInputRef.current.value = ""; }}>Xóa ảnh đã chọn</Button>
+                  <input ref={avatarInputRef} hidden type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (!file) return; if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024) { setFormError("Ảnh phải là JPEG, PNG hoặc WebP và không vượt quá 5 MB."); event.target.value = ""; return; } setFormError(""); setAvatarFile(file); setAvatarCleared(false); setAvatarPreview(URL.createObjectURL(file)); }} />
+                </Stack>
+              </Stack>
+            </AdminFormSection>
             <AdminFormSection
-              title="Thông tin cán bộ"
-              description="Thông tin nhận diện và liên hệ của cán bộ y tế."
+              title="Thông tin nhân sự"
+              description="Thông tin nhận diện và liên hệ của nhân viên hoặc quản lý."
             >
               <Grid container spacing={1.75}>
                 <Grid size={{ xs: 12 }}>
@@ -543,7 +583,7 @@ export default function AdminStaffPage() {
                     fullWidth
                     required
                     label="Họ và tên"
-                    placeholder="Nhập họ và tên cán bộ"
+                    placeholder="Nhập họ và tên"
                     value={form.fullName}
                     onChange={(event) =>
                       setForm({ ...form, fullName: event.target.value })
@@ -564,7 +604,6 @@ export default function AdminStaffPage() {
                   <TextField
                     fullWidth
                     required
-                    disabled={Boolean(editing)}
                     label="Email đăng nhập"
                     type="email"
                     placeholder="email@example.com"
@@ -574,7 +613,7 @@ export default function AdminStaffPage() {
                     }
                     helperText={
                       editing
-                        ? "Email đăng nhập không thể thay đổi tại đây."
+                        ? "Thay đổi email tại đây sẽ thay đổi email dùng để đăng nhập. Mật khẩu hiện tại được giữ nguyên."
                         : "Mỗi email chỉ được sử dụng cho một tài khoản."
                     }
                     sx={adminFieldSx}
@@ -588,6 +627,12 @@ export default function AdminStaffPage() {
                       },
                     }}
                   />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField select fullWidth label="Vai trò" value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value as StaffInput["role"] })} sx={adminFieldSx}>
+                    <MenuItem value="STAFF">Nhân viên (STAFF)</MenuItem>
+                    <MenuItem value="MANAGER">Quản lý (MANAGER)</MenuItem>
+                  </TextField>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
@@ -636,7 +681,7 @@ export default function AdminStaffPage() {
 
             <AdminFormSection
               title="Phân công và trạng thái"
-              description="Cơ sở làm việc có thể để trống nếu cán bộ chưa được phân công."
+              description="Cơ sở công tác là nơi nhân viên hoặc quản lý đang làm việc. Quyền đăng thông báo toàn trạm của MANAGER không phụ thuộc cơ sở được chọn."
             >
               <Stack spacing={1.75}>
                 <TextField
@@ -656,6 +701,7 @@ export default function AdminStaffPage() {
                     </MenuItem>
                   ))}
                 </TextField>
+                {form.role === "MANAGER" && <Alert severity="info">Quản lý có thể được phân công làm việc tại bất kỳ cơ sở nào. Thông báo do MANAGER tạo vẫn áp dụng cho toàn trạm, không phụ thuộc cơ sở công tác.</Alert>}
                 {editing && (
                   <TextField
                     select
@@ -673,7 +719,7 @@ export default function AdminStaffPage() {
                 )}
                 {!editing && (
                   <Alert severity="info" sx={{ borderRadius: 2.5 }}>
-                    Sau khi tạo, mật khẩu tạm chỉ hiển thị một lần. Cán bộ phải đổi mật khẩu ở lần đăng nhập đầu tiên.
+                    Sau khi tạo, mật khẩu tạm chỉ hiển thị một lần. Nhân sự phải đổi mật khẩu ở lần đăng nhập đầu tiên.
                   </Alert>
                 )}
               </Stack>
@@ -696,7 +742,7 @@ export default function AdminStaffPage() {
 
       <ConfirmDialog
         open={Boolean(confirmAction)}
-        title={confirmAction?.kind === "delete" ? "Xóa tài khoản cán bộ?" : "Cấp mật khẩu tạm?"}
+        title={confirmAction?.kind === "delete" ? "Xóa tài khoản nhân sự?" : "Cấp mật khẩu tạm?"}
         description={
           confirmAction
             ? confirmAction.kind === "delete"
@@ -722,13 +768,13 @@ export default function AdminStaffPage() {
         <DialogTitle sx={{ px: { xs: 2, sm: 3 }, pt: 2.5, pb: 1.5 }}>
           <AdminDialogHeading
             title="Mật khẩu tạm thời"
-            description="Sao chép và gửi trực tiếp cho cán bộ qua kênh an toàn."
+            description="Sao chép và gửi trực tiếp cho nhân sự qua kênh an toàn."
           />
         </DialogTitle>
         <DialogContent sx={{ px: { xs: 2, sm: 3 }, py: 2 }}>
           <Stack spacing={2}>
             <Alert severity="warning" sx={{ borderRadius: 2.5 }}>
-              Mật khẩu chỉ được hiển thị một lần. Cán bộ phải đổi mật khẩu sau khi đăng nhập.
+              Mật khẩu chỉ được hiển thị một lần. Nhân sự phải đổi mật khẩu sau khi đăng nhập.
             </Alert>
             <TextField
               fullWidth

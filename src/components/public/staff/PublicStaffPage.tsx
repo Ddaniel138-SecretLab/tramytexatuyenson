@@ -1,7 +1,16 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
-import { Alert, Container, Grid, MenuItem, Stack, TextField } from "@mui/material";
+import {
+  Alert,
+  Container,
+  Grid,
+  MenuItem,
+  Stack,
+  TextField,
+} from "@mui/material";
+
 import { usePagedApi } from "@/hooks/usePagedApi";
 import type { Facility, Profile } from "@/types/database";
 import PaginationBar from "@/components/shared/PaginationBar";
@@ -10,6 +19,8 @@ import EmptyState from "@/components/shared/EmptyState";
 import PublicPageHeader from "../shared/PublicPageHeader";
 import PublicSearchField from "../shared/PublicSearchField";
 import StaffCard from "./StaffCard";
+
+const FILTER_HEIGHT = 44;
 
 export function PublicStaffPage() {
   const [search, setSearch] = useState("");
@@ -20,11 +31,27 @@ export function PublicStaffPage() {
     {},
     50,
   );
-  const { data, pagination, page, goToPage, setPage, loading, error } =
-    usePagedApi<Profile>("/api/public/staff", { search, facilityId }, 12);
+
+  const {
+    data,
+    pagination,
+    page,
+    goToPage,
+    setPage,
+    loading,
+    error,
+  } = usePagedApi<Profile>(
+    "/api/public/staff",
+    { search, facilityId },
+    12,
+  );
 
   useEffect(() => {
-    const queryFacilityId = new URLSearchParams(window.location.search).get("facilityId");
+    const queryFacilityId = new URLSearchParams(
+      window.location.search,
+    ).get("facilityId");
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (queryFacilityId) setFacilityId(queryFacilityId);
   }, []);
 
@@ -40,12 +67,31 @@ export function PublicStaffPage() {
         description="Thông tin cán bộ đang công tác tại các cơ sở trực thuộc Trạm Y tế xã Tuyên Sơn."
       />
 
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mb: 3 }}>
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={1.5}
+        alignItems="stretch"
+        sx={{ mb: 3 }}
+      >
         <PublicSearchField
           value={search}
           onChange={setSearch}
           placeholder="Tìm theo tên hoặc chức vụ..."
+          sx={{
+            flex: "1 1 0",
+            minWidth: 0,
+            "& .MuiOutlinedInput-root": {
+              height: FILTER_HEIGHT,
+              minHeight: FILTER_HEIGHT,
+              boxSizing: "border-box",
+              borderRadius: 2.5,
+            },
+            "& .MuiOutlinedInput-input": {
+              boxSizing: "border-box",
+            },
+          }}
         />
+
         <TextField
           select
           value={facilityId}
@@ -53,8 +99,15 @@ export function PublicStaffPage() {
           size="small"
           label="Cơ sở"
           sx={{
+            width: { xs: "100%", sm: 260 },
             minWidth: { xs: "100%", sm: 260 },
-            "& .MuiOutlinedInput-root": { minHeight: 44, borderRadius: 2.5 },
+            flexShrink: 0,
+            "& .MuiOutlinedInput-root": {
+              height: FILTER_HEIGHT,
+              minHeight: FILTER_HEIGHT,
+              boxSizing: "border-box",
+              borderRadius: 2.5,
+            },
           }}
         >
           <MenuItem value="">Tất cả cơ sở</MenuItem>
@@ -66,7 +119,11 @@ export function PublicStaffPage() {
         </TextField>
       </Stack>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
       {loading ? (
         <LoadingState />
@@ -75,7 +132,10 @@ export function PublicStaffPage() {
       ) : (
         <Grid container spacing={2.5}>
           {data.map((person) => (
-            <Grid key={person.id} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+            <Grid
+              key={person.id}
+              size={{ xs: 12, sm: 6, md: 4, lg: 3 }}
+            >
               <StaffCard person={person} />
             </Grid>
           ))}

@@ -1,4 +1,4 @@
-export type AppRole = "ADMIN" | "STAFF";
+export type AppRole = "ADMIN" | "MANAGER" | "STAFF";
 export type AnnouncementType =
   | "VACCINATION"
   | "DISEASE_PREVENTION"
