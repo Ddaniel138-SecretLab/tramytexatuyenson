@@ -1,6 +1,6 @@
 export const FACILITY_IMAGE_BY_CODE: Record<string, string> = {
   HUONG_HOA: "/facilities/huong-hoa.jpg",
-  THANH_THACH: "/facilities/huong-hoa.jpg",
+  THANH_THACH: "/facilities/thanh-thach.jpg",
 };
 
 export function getFacilityImagePath(
